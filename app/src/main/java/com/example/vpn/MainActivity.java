@@ -9,9 +9,11 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.widget.Button;
 
 import androidx.core.splashscreen.SplashScreen;
 
+import com.airbnb.lottie.LottieAnimationView;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -31,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
     private String StringGetConnectionURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/filedetails.json";
     private String AppDetails, FileDetails;
     private SharedPreferences SharedAppDetails;
+    private Button btn_connect;
+    boolean isPlay_anim = false;
+    private LottieAnimationView lottie_animation;
     int Random;
 
     @Override
@@ -60,7 +65,26 @@ public class MainActivity extends AppCompatActivity {
                 });
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.main_window);
+        btn_connect = findViewById(R.id.btn_connect);
+        lottie_animation = findViewById(R.id.animation);
+
+        btn_connect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isPlay_anim){
+                    lottie_animation.cancelAnimation();
+                    isPlay_anim = false;
+                }
+                else{
+                    isPlay_anim = true;
+                    lottie_animation.setAnimation(R.raw.servers);
+                    lottie_animation.playAnimation();
+                }
+
+            }
+        });
+
     }
 
     private void dismissSplashScreen() {
