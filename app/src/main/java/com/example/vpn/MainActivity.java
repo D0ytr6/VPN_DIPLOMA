@@ -2,8 +2,11 @@ package com.example.vpn;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -85,15 +88,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-    }
-
-    private void dismissSplashScreen() {
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                isLoadDataReady = true;
-            }
-        }, 3000);
     }
 
     void getAppDetails() {
@@ -271,6 +265,27 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private boolean hasInternetConnection() {
+        boolean haveConnectedWifi = false;
+        boolean haveConnectedMobile = false;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo[] netInfo = cm.getAllNetworkInfo();
+            for (NetworkInfo ni : netInfo) {
+                if (ni.getTypeName().equalsIgnoreCase("WIFI"))
+                    if (ni.isConnected())
+                        haveConnectedWifi = true;
+                if (ni.getTypeName().equalsIgnoreCase("MOBILE"))
+                    if (ni.isConnected())
+                        haveConnectedMobile = true;
+            }
+        } catch (Exception e) {
+            Log.d("Error", e.toString());
+        }
+
+        return haveConnectedWifi || haveConnectedMobile;
     }
 }
 

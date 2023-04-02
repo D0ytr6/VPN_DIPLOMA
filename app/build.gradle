@@ -12,7 +12,7 @@ android {
         targetSdk 33
         versionCode 1
         versionName "1.0"
-
+        buildConfigField "String", "FLAVOR", '""'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -40,7 +40,7 @@ dependencies {
     // For old android splash screen core
     implementation 'androidx.core:core-splashscreen:1.0.0'
 
-    // requests
+    // async requests
     implementation 'com.android.volley:volley:1.2.1'
 
     //animations
