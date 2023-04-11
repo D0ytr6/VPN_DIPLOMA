@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto">
@@ -38,10 +39,10 @@
 
         <ImageView
             android:id="@+id/servers"
-            android:src="@drawable/servers_icon"
             android:layout_width="35dp"
             android:layout_height="35dp"
-            android:layout_gravity="center_vertical" />
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/servers_icon" />
 
     </LinearLayout>
 
@@ -59,14 +60,14 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="15dp"
             android:layout_marginEnd="15dp"
-            android:padding="25dp"
             android:background="@drawable/rectangle"
-            android:gravity="center">
+            android:gravity="center"
+            android:padding="25dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Message"
+                android:text="Tap CONNECT to start"
                 android:textColor="@color/white" />
 
         </LinearLayout>
@@ -81,20 +82,63 @@
         android:layout_marginBottom="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/linearLayoutServers"
+        app:layout_constraintVertical_bias="0.493"
         app:lottie_autoPlay="true"
         app:lottie_loop="true" />
 
     <Button
         android:id="@+id/btn_connect"
+        android:background="@drawable/btn_connect_selector"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="20dp"
+        android:paddingStart="80dp"
+        android:paddingEnd="80dp"
+        android:text="CONNECT"
+        android:textColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@id/animation" />
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/teal_200"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginStart="20dp"
-        android:text="Start Animation"
-        app:layout_constraintTop_toBottomOf="@id/animation"/>
+        app:layout_constraintTop_toBottomOf="@id/btn_connect"
+        android:layout_marginTop="10dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/rectangle"
+            android:gravity="center"
+            android:layout_marginStart="95dp"
+            android:layout_marginEnd="95dp"
+            android:padding="15dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:textColor="@color/white"
+                android:text="United States" />
+
+            <ImageView
+                android:id="@+id/chosen_server"
+                android:layout_weight="1"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_gravity="center_vertical"
+                 />
+
+        </LinearLayout>
+
+
+    </LinearLayout>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

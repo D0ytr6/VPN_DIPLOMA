@@ -3,16 +3,19 @@ package com.example.vpn;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.Button;
+import android.widget.ImageView;
 
 import androidx.core.splashscreen.SplashScreen;
 
@@ -27,7 +30,17 @@ import com.android.volley.toolbox.Volley;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.Random;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+
+import de.blinkt.openvpn.LaunchVPN;
+import de.blinkt.openvpn.VpnProfile;
+import de.blinkt.openvpn.core.App;
+import de.blinkt.openvpn.core.ConfigParser;
+import de.blinkt.openvpn.core.ProfileManager;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,14 +48,24 @@ public class MainActivity extends AppCompatActivity {
     private String StringGetAppURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/appdetails.json";
     private String StringGetConnectionURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/filedetails.json";
     private String AppDetails, FileDetails;
+    private InputStream inputStream;
+    private BufferedReader bufferedReader;
+    private ConfigParser configParser;
+    private VpnProfile vpnProfile;
+    private ProfileManager profileManager;
+
+    private String Flag;
+
     private SharedPreferences SharedAppDetails;
     private Button btn_connect;
     boolean isPlay_anim = false;
     private LottieAnimationView lottie_animation;
+    private ImageView chosen_server_img;
     int Random;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
 
         // Set up an OnPreDrawListener to the root view.
@@ -69,8 +92,10 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_window);
+
         btn_connect = findViewById(R.id.btn_connect);
         lottie_animation = findViewById(R.id.animation);
+        chosen_server_img = findViewById(R.id.chosen_server);
 
         btn_connect.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -78,16 +103,113 @@ public class MainActivity extends AppCompatActivity {
                 if(isPlay_anim){
                     lottie_animation.cancelAnimation();
                     isPlay_anim = false;
+                    btn_connect.setText("Start animation");
                 }
                 else{
                     isPlay_anim = true;
                     lottie_animation.setAnimation(R.raw.servers);
                     lottie_animation.playAnimation();
+                    btn_connect.setText("Stop animation");
                 }
 
             }
         });
 
+//        start_service.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Intent service = new Intent(getBaseContext(), MyServiceStarting.class);
+//                Log.d("Service", "Thread id: " + Long.toString(Thread.currentThread().getId()) + " MainActivity");
+//                startService(service);
+//
+//            }
+//        });
+//
+//        stop_service.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Intent service = new Intent(getBaseContext(), MyServiceStarting.class);
+//                stopService(service);
+//            }
+//        });
+        SharedPreferences connection_app_details = getSharedPreferences("connection_data", 0);
+        Flag = connection_app_details.getString("image", "None");
+        setFlag(Flag);
+
+    }
+    private void setFlag(String img_flag){
+        switch (img_flag){
+            case "unitedstates":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_united_states);
+        }
+    }
+
+    private void start_vpn_connection(String VPN_File){
+        if (VPN_File != null){
+            try {
+                inputStream = new ByteArrayInputStream(VPN_File.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.d("Error", e.toString());
+            }
+            try {
+                bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.d("Error", e.toString());
+            }
+
+            // creating openvpn configure
+            configParser = new ConfigParser();
+            try {
+                // push config file to parser
+                configParser.parseConfig(bufferedReader);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                Log.d("Error", e.toString());
+            }
+
+            // return and save VPN profile. return VpnProfile object
+            try {
+                vpnProfile = configParser.convertProfile();
+            } catch (Exception e){
+                e.printStackTrace();
+                Log.d("Error", e.toString());
+            }
+            // Allow apps witch blocked
+            vpnProfile.mAllowedAppsVpnAreDisallowed = true;
+
+            // Todo add disallowed apps
+
+            // set name and password
+            vpnProfile.mName = Build.MODEL;
+            vpnProfile.mUsername = Data.FileUsername;
+            vpnProfile.mPassword = Data.FilePassword;
+
+            try {
+                // singleton object
+                profileManager = ProfileManager.getInstance(MainActivity.this);
+                profileManager.addProfile(vpnProfile);
+                profileManager.saveProfileList(MainActivity.this);
+                profileManager.saveProfile(MainActivity.this, vpnProfile);
+                vpnProfile = profileManager.getProfileByName(Build.MODEL);
+                // start LaunchVPN activity
+                Intent launchVPN_intent = new Intent(getApplicationContext(), LaunchVPN.class);
+                // put UUID inside intent param
+                launchVPN_intent.putExtra(LaunchVPN.EXTRA_KEY, vpnProfile.getUUID().toString());
+                launchVPN_intent.setAction(Intent.ACTION_MAIN);
+                startActivity(launchVPN_intent);
+                App.isStart = false;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.d("Error", e.toString());
+            }
+
+
+
+        }
     }
 
     void getAppDetails() {
@@ -116,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
                 Data.isAppDetails = false;
             }
         });
+
         // Add object to queue
         queue.add(stringRequest);
         queue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {

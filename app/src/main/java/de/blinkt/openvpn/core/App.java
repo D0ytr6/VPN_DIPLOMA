@@ -37,8 +37,6 @@ public class App extends /*com.orm.SugarApp*/ Application {
         super.onCreate();
         createNotificationChannel();
 
-
-
         SharedPreferences sp_settings = getSharedPreferences("settings_data", 0);
         device_id = sp_settings.getString("device_id", "NULL");
 
