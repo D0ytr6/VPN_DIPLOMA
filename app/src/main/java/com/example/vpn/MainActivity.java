@@ -1,5 +1,7 @@
 package com.example.vpn;
 
+import static com.example.vpn.AppDataParcer.getAppDetails;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
@@ -16,7 +18,6 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.ImageView;
-
 import androidx.core.splashscreen.SplashScreen;
 
 import com.airbnb.lottie.LottieAnimationView;
@@ -83,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
                             // The content is not ready; suspend.
                             //dismissSplashScreen();
-                            getAppDetails();
+                            getAppDetails(MainActivity.this, StringGetAppURL, StringGetConnectionURL);
                             isLoadDataReady = true;
                             return false;
                         }
@@ -132,10 +133,34 @@ public class MainActivity extends AppCompatActivity {
 //                stopService(service);
 //            }
 //        });
+
         SharedPreferences connection_app_details = getSharedPreferences("connection_data", 0);
         Flag = connection_app_details.getString("image", "None");
-        setFlag(Flag);
 
+        // ui update thread
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted()){
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setFlag(Flag);
+                        }
+                    });
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        Log.d("Error", e.toString());
+                    }
+                }
+
+            }
+        };
+
+        Thread ui_update = new Thread(r);
+        ui_update.start();
     }
     private void setFlag(String img_flag){
         switch (img_flag){
@@ -207,12 +232,10 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Error", e.toString());
             }
 
-
-
         }
     }
 
-    void getAppDetails() {
+    void getAppDetails2() {
         // Create request queue from Volley library
         RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
         // clear cache
@@ -245,13 +268,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onRequestFinished(Request<String> request) {
                 if (Data.isAppDetails) {
-                    getFileDetails();
+                    getFileDetails2();
                 }
             }
         });
     }
 
-    void getFileDetails() {
+    void getFileDetails2() {
         RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
         queue.getCache().clear();
         StringRequest stringRequest = new StringRequest(Request.Method.GET, StringGetConnectionURL,
