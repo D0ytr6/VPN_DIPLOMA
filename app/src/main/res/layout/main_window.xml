@@ -74,7 +74,6 @@
 
     </LinearLayout>
 
-
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/animation"
         android:layout_width="200dp"
@@ -88,6 +87,18 @@
         app:layout_constraintVertical_bias="0.493"
         app:lottie_autoPlay="true"
         app:lottie_loop="true" />
+
+    <TextView
+        android:id="@+id/tv_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="32dp"
+        android:textColor="@color/purple_700"
+        app:layout_constraintTop_toTopOf="@id/animation"
+        app:layout_constraintBottom_toBottomOf="@id/animation"
+        app:layout_constraintEnd_toEndOf="@id/animation"
+        app:layout_constraintStart_toStartOf="@id/animation"
+        />
 
     <Button
         android:id="@+id/btn_connect"

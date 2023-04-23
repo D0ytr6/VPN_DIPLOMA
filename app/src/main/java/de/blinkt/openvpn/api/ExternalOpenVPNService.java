@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.util.Log;
 
 import com.example.vpn.R;
 
@@ -258,6 +259,7 @@ public class ExternalOpenVPNService extends Service implements StateListener {
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d("MyService", "Start ExternalOpenVPNService");
         VpnStatus.addStateListener(this);
         mExtAppDb = new ExternalAppDatabase(this);
         Intent intent = new Intent(getBaseContext(), OpenVPNService.class);
