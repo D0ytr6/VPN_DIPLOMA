@@ -24,6 +24,7 @@ public class ProfileManager {
     private static final String PREFS_NAME = "VPNList";
     private static final String LAST_CONNECTED_PROFILE = "lastConnectedProfile";
     private static final String TEMPORARY_PROFILE_FILENAME = "temporary-vpn-profile";
+
     private static ProfileManager instance;
     private static VpnProfile mLastConnectedVpn = null;
     private static VpnProfile tmpprofile = null;

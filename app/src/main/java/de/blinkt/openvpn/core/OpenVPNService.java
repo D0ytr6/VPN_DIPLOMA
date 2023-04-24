@@ -280,6 +280,8 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         PendingIntent pendingIntent = PendingIntent.getActivity(this,
                 0, notificationIntent, 0);
 
+        Log.d("MyService", "Start OpenVPNService");
+
         SharedPreferences ConnectionDetails = getSharedPreferences("connection_data", 0);
         City = ConnectionDetails.getString("city", "Select a City");
         Image = ConnectionDetails.getString("image", "unitedstates");
