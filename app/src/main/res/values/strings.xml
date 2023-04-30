@@ -1,6 +1,6 @@
 <resources>
     <string name="get_time">%d%02d%02d%02d%02d%02d%03d</string>
-    <string name="app_name">VPN</string>
+    <string name="app_name">J4st VPN</string>
     <string name="auth_username">Username</string>
     <string name="no_keystore_cert_selected">You must select a User certificate</string>
     <string name="no_ca_cert_selected">You must select a CA certificate</string>
