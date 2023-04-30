@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
     private SharedPreferences SharedAppDetails;
     private Button btn_connect;
-    private TextView load_counter;
+    private TextView load_counter, App_logo;
     boolean isPlay_anim = false;
     private LottieAnimationView lottie_animation;
     private ImageView chosen_server_img;
@@ -78,6 +78,13 @@ public class MainActivity extends AppCompatActivity {
     VpnProfile vp;
     ProfileManager pm;
     String TODAY;
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,21 +115,24 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_window);
-        getAppDetails(MainActivity.this, StringGetAppURL, StringGetConnectionURL);
+
         btn_connect = findViewById(R.id.btn_connect);
         lottie_animation = findViewById(R.id.animation);
         chosen_server_img = findViewById(R.id.chosen_server);
         load_counter = findViewById(R.id.tv_count);
+        App_logo = findViewById(R.id.app_name);
+
         Typeface pixel_typeface = Typeface.createFromAsset(getAssets(),"fonts/pixel_font2.ttf");
         Typeface roboto_typeface = Typeface.createFromAsset(getAssets(),"fonts/Roboto-Bold.ttf");
 
         load_counter.setTypeface(roboto_typeface);
+        App_logo.setTypeface(roboto_typeface);
 
         btn_connect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(hasInternetConnection()){
-                    lottie_animation.setAnimation(R.raw.connect_2);
+                    lottie_animation.setAnimation(R.raw.loading_circle);
                     lottie_animation.playAnimation();
                     timer = 30;
                     SharedPreferences file_details = getSharedPreferences("connection_data", 0);
@@ -130,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
                     EncryptData En = new EncryptData();
                     VPN_File = En.decrypt(VPN_File);
                     start_vpn(VPN_File);
-                    CountDownTimer countDownTimer = new CountDownTimer(30000, 1000){
+                    CountDownTimer countDownTimer = new CountDownTimer(10000, 1000){
                         @Override
                         public void onTick(long millisUntilFinished) {
                             timer = timer - 1;
@@ -142,6 +152,9 @@ public class MainActivity extends AppCompatActivity {
                         public void onFinish() {
                             load_counter.setText("");
                             lottie_animation.cancelAnimation();
+                            lottie_animation.setAnimation(R.raw.noconnection);
+                            lottie_animation.playAnimation();
+
                         }
                     }.start();
                 }
@@ -193,6 +206,9 @@ public class MainActivity extends AppCompatActivity {
 
         Thread ui_update = new Thread(r);
         ui_update.start();
+
+        Intent SplashScreen = new Intent(MainActivity.this, WelcomeSplashScreen.class);
+        startActivity(SplashScreen);
     }
     private void setFlag(String img_flag){
         switch (img_flag){
