@@ -24,6 +24,6 @@ public class WelcomeSplashScreen extends AppCompatActivity {
                 getAppDetails(WelcomeSplashScreen.this, StringGetAppURL, StringGetConnectionURL);
                 finish();
             }
-        }, 1000);
+        }, 2000);
     }
 }
