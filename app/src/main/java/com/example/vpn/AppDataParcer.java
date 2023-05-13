@@ -21,6 +21,7 @@ public class AppDataParcer {
     private static String AppDetails;
     private static String FileDetails;
     private static SharedPreferences SharedAppDetails;
+    private static int auto_connect_index = 0;
 
     public static void getAppDetails(Context context, String StringGetAppURL, String GetFileURL){
         // Create request queue from Volley library
@@ -113,7 +114,7 @@ public class AppDataParcer {
                 try {
                     JSONObject json_response = new JSONObject(AppDetails);
                     JSONArray jsonArray = json_response.getJSONArray("free");
-                    JSONObject json_object = jsonArray.getJSONObject(0);
+                    JSONObject json_object = jsonArray.getJSONObject(auto_connect_index);
                     ID = json_object.getString("id");
                     FileID = json_object.getString("file");
                     City = json_object.getString("city");

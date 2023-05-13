@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="HardcodedText">
+
+    <group android:id="@+id/con_da">
+        <item
+            android:id="@+id/nav_account"
+            android:title="Connection data" />
+    </group>
+
+    <item
+        android:id="@+id/nav_settings"
+        android:title="Settings" />
+
+    <item
+        android:id="@+id/nav_faq"
+        android:title="FAQ" />
+
+    <item
+        android:id="@+id/nav_git"
+        android:title="GitHub" />
+
+    <item
+        android:id="@+id/nav_logout"
+        android:title="Close" />
+
+</menu>
