@@ -127,6 +127,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
             return OpenVPNService.this.stopVPN(replaceConnection);
         }
     };
+
     private String mLastTunCfg;
     private String mRemoteGW;
     private Handler guiHandler;
@@ -479,7 +480,7 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
         } else if(App.connection_status == 2){
             Title = "Connected " + City;
         } else{
-            Title = "Tap to open Buzz VPN";
+            Title = "Tap to open VPN";
         }
 
         return new NotificationCompat.Builder(this, App.CHANNEL_ID)

@@ -19,7 +19,7 @@ import java.util.Calendar;
 import java.util.Random;
 
 
-public class App extends /*com.orm.SugarApp*/ Application {
+public class App extends  Application {
     public static boolean isStart;
     public static int connection_status = 0;
     public static boolean hasFile = false;
@@ -31,6 +31,9 @@ public class App extends /*com.orm.SugarApp*/ Application {
     public static final String CHANNEL_ID = "COM.BUZZ.VPN";
     public static final int NOTIFICATION_ID = new Random().nextInt(601) + 200;
     NotificationManager manager;
+
+
+    // TODO check notification
 
     @Override
     public void onCreate() {

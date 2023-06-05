@@ -170,7 +170,7 @@ public class ProfileManager {
         editor.apply();
     }
 
-    public void addProfile(VpnProfile profile) {
+    public void  addProfile(VpnProfile profile) {
         profiles.put(profile.getUUID().toString(), profile);
     }
 

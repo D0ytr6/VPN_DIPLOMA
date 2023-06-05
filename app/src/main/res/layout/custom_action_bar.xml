@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="10dp"
         android:fontFamily="sans-serif-black"
-        android:text="J4ST"
+        android:text="SPACE"
         android:textColor="@color/colorYellow"
         android:textSize="25sp"
         android:typeface="monospace" />

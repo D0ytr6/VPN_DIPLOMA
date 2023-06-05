@@ -3,26 +3,21 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:ignore="HardcodedText">
 
-    <group android:id="@+id/con_da">
+    <group android:id="@+id/group_faq">
         <item
-            android:id="@+id/nav_account"
-            android:title="Connection data" />
+            android:id="@+id/nav_faq"
+            android:title="FAQ" />
     </group>
 
-    <item
-        android:id="@+id/nav_settings"
-        android:title="Settings" />
+    <group android:id="@+id/group_git">
+        <item
+            android:id="@+id/nav_git"
+            android:title="GitHub" />
+    </group>
 
-    <item
-        android:id="@+id/nav_faq"
-        android:title="FAQ" />
+        <item
+            android:id="@+id/nav_logout"
+            android:title="Close" />
 
-    <item
-        android:id="@+id/nav_git"
-        android:title="GitHub" />
-
-    <item
-        android:id="@+id/nav_logout"
-        android:title="Close" />
 
 </menu>

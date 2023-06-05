@@ -16,6 +16,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+import de.blinkt.openvpn.core.App;
+
 public class ServersActivity extends AppCompatActivity {
 
     private LinearLayout exit_ll;
@@ -121,6 +123,7 @@ public class ServersActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 finish();
+                overridePendingTransition(R.anim.slide_down, R.anim.alpha);
             }
         });
 
@@ -145,7 +148,9 @@ public class ServersActivity extends AppCompatActivity {
                     Editor.putString("image", chosed_server.getImage());
                     Editor.putString("country", chosed_server.getName_country());
                     Editor.apply();
+                    App.abortConnection = true;
                     finish();
+                    overridePendingTransition(R.anim.slide_down, R.anim.alpha);
 
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -154,7 +159,11 @@ public class ServersActivity extends AppCompatActivity {
 
             }
         });
+    }
 
-
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        overridePendingTransition(R.anim.slide_down, R.anim.alpha);
     }
 }
