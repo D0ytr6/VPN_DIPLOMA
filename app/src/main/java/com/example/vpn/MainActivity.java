@@ -1,7 +1,5 @@
 package com.example.vpn;
 
-import static com.example.vpn.AppDataParcer.getAppDetails;
-
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,20 +11,20 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.graphics.Typeface;
-import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewTreeObserver;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -57,50 +55,56 @@ import de.blinkt.openvpn.LaunchVPN;
 import de.blinkt.openvpn.VpnProfile;
 import de.blinkt.openvpn.core.App;
 import de.blinkt.openvpn.core.ConfigParser;
+import de.blinkt.openvpn.core.ConnectionStatus;
 import de.blinkt.openvpn.core.IOpenVPNServiceInternal;
 import de.blinkt.openvpn.core.OpenVPNService;
 import de.blinkt.openvpn.core.ProfileManager;
+import de.blinkt.openvpn.core.VpnStatus;
 
 
+public class MainActivity extends AppCompatActivity implements VpnStatus.StateListener {
 
-public class MainActivity extends AppCompatActivity {
+    private String LogInf = "LOGGING_INFO";
+    private String Mylogging = "Mylogging";
 
-    private boolean isLoadDataReady = false;
-    private String StringGetAppURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/appdetails.json";
-    private String StringGetConnectionURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/filedetails.json";
-    private String AppDetails, FileDetails, ip;
-    private InputStream inputStream;
-    private BufferedReader bufferedReader;
+    private InputStream ByteInputStream;
+    private BufferedReader ByteBufferedReader;
     private ConfigParser configParser;
     private VpnProfile vpnProfile;
     private ProfileManager profileManager;
+    private CountDownTimer countDownTimer;
 
     private String Flag, ServerLocationCountry, VpnFileConnection;
 
     private SharedPreferences SharedAppDetails;
     private Button btn_connect;
     private TextView load_counter, App_logo;
-    private LinearLayout chose_server;
+    private LinearLayout chose_server, connection_data;
 
     boolean isPlay_anim = false;
     private LottieAnimationView lottie_animation;
     private ImageView chosen_server_img;
     private int timer;
-    int Random;
 
     public DrawerLayout drawerLayout;
     public ActionBarDrawerToggle actionBarDrawerToggle;
 
     private TextView tv_server_location, current_ip, protected_state;
     private EncryptData encryptData = new EncryptData();
-    private boolean IsConnectionEstablished = false;
-
+    private boolean IsConButtonPushed = false, isTimerStarted = false;
 
     IOpenVPNServiceInternal vpn_service;
-    ConfigParser cp;
-    VpnProfile vp;
-    ProfileManager pm;
+    ConfigParser conf_parcer;
+    VpnProfile vpn_profile;
+    ProfileManager profile_manager;
     String TODAY;
+
+    //TODO Add click event to drawer elements
+    //TODO fix bug whith connect button, if clear app when connection established and open again
+    //TODO reduce bold of timer +
+    //TODO save chosen server in SharedPreferences
+    //TODO fix slow load of ip
+    //TODO bug, app load old SharedPreferences and after update it, if change other server app anim will crash
 
     private ServiceConnection ConnectionService = new ServiceConnection() {
         @Override
@@ -115,6 +119,12 @@ public class MainActivity extends AppCompatActivity {
     };
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
 
@@ -127,20 +137,27 @@ public class MainActivity extends AppCompatActivity {
             Data.isConnectionDetails = true;
         }
 
+        VpnStatus.addStateListener(this);
+
+        Intent intent = new Intent(this, OpenVPNService.class);
+        intent.setAction(OpenVPNService.START_SERVICE);
+        bindService(intent, ConnectionService, Context.BIND_AUTO_CREATE);
+
         SharedPreferences connection_app_details = getSharedPreferences("connection_data", 0);
         Flag = connection_app_details.getString("image", "None");
         ServerLocationCountry = connection_app_details.getString("country", "None");
         VpnFileConnection = encryptData.decrypt(connection_app_details.getString("file", "None"));
         Log.d("Flag", Flag);
 
-        Intent intent = new Intent(this, OpenVPNService.class);
-        intent.setAction(OpenVPNService.START_SERVICE);
-        bindService(intent, ConnectionService, Context.BIND_AUTO_CREATE);
-
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.nav_logout){
+            Log.d(Mylogging, "close clicked");
+            finish();
+        }
+
         if (actionBarDrawerToggle.onOptionsItemSelected(item)) {
             return true;
         }
@@ -153,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.nav_main_window);
+        setContentView(R.layout.main_activity);
 
         getSupportActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
         getSupportActionBar().setDisplayShowCustomEnabled(true);
@@ -181,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
         tv_server_location = findViewById(R.id.tv_server_location);
         current_ip = findViewById(R.id.current_ip);
         protected_state = findViewById(R.id.protected_state);
-
+        connection_data = findViewById(R.id.connection_data);
 
         Typeface pixel_typeface = Typeface.createFromAsset(getAssets(),"fonts/pixel_font2.ttf");
         Typeface roboto_typeface = Typeface.createFromAsset(getAssets(),"fonts/Roboto-Bold.ttf");
@@ -189,7 +206,227 @@ public class MainActivity extends AppCompatActivity {
         load_counter.setTypeface(roboto_typeface);
         App_logo.setTypeface(roboto_typeface);
 
-        RequestQueue queue = Volley.newRequestQueue(this);
+        update_ip();
+
+        Handler animation_handler = new Handler();
+        animation_handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Animation slide_down_anim = AnimationUtils.loadAnimation(MainActivity.this, R.anim.slide_down);
+                chose_server.startAnimation(slide_down_anim);
+                btn_connect.startAnimation(slide_down_anim);
+                lottie_animation.startAnimation(slide_down_anim);
+                connection_data.startAnimation(slide_down_anim);
+            }
+        }, 1500);
+
+        protected_state.setText("Unprotected");
+        protected_state.setTextColor(getResources().getColor(R.color.colorRed));
+        lottie_animation.setAnimation(R.raw.noconnection);
+        lottie_animation.playAnimation();
+
+        // TODO if cancel pushed when timer don't shown, timer will stand on ui
+        btn_connect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(!IsConButtonPushed){
+                    if(hasInternetConnection()){
+                        IsConButtonPushed = true;
+                        create_animation(lottie_animation, R.anim.fade_out);
+                        btn_connect.setText("CANCEL");
+                        timer = 30;
+
+                        // wait until fade_uot
+                        Handler ui_handler = new Handler();
+                        ui_handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                lottie_animation.cancelAnimation();
+                                create_animation(lottie_animation, R.anim.fade_in);
+                                create_animation(load_counter, R.anim.fade_in);
+                                load_counter.setText(Integer.toString(timer));
+                                lottie_animation.setAnimation(R.raw.loading_circle);
+                                lottie_animation.playAnimation();
+                            }
+                        }, 1000);
+
+                        start_vpn(VpnFileConnection);
+                        isTimerStarted = true;
+
+                        countDownTimer = new CountDownTimer(30000, 1000){
+                            @Override
+                            public void onTick(long millisUntilFinished) {
+                                timer = timer - 1;
+                                if(timer != 29){
+                                    load_counter.setText(Integer.toString(timer));
+                                }
+                                // wait to return connection status from state listener
+                                if (App.connection_status == 2){
+                                    countDownTimer.cancel();
+                                    isTimerStarted = false;
+                                    App.isStart = true;
+
+                                    create_animation(load_counter, R.anim.fade_out);
+                                    create_animation(lottie_animation, R.anim.fade_out);
+                                    btn_connect.setText("DISCONNECT");
+                                    protected_state.setText("Protected");
+                                    protected_state.setTextColor(getResources().getColor(R.color.darkGreen));
+
+                                    update_ip();
+
+                                    Handler successHandler = new Handler();
+                                    successHandler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            load_counter.setText("");
+                                            lottie_animation.cancelAnimation();
+                                            create_animation(lottie_animation, R.anim.fade_in);
+                                            lottie_animation.setAnimation(R.raw.space_user);
+                                            lottie_animation.playAnimation();
+                                        }
+                                    }, 1000);
+                                }
+
+                            }
+                            // if time passed and connection doesn't happened
+                            @Override
+                            public void onFinish() {
+                                IsConButtonPushed = false;
+                                stop_vpn();
+                                App.isStart = false;
+                                countDownTimer.cancel();
+                                isTimerStarted = false;
+
+                                create_animation(load_counter, R.anim.fade_out);
+                                create_animation(lottie_animation, R.anim.fade_out);
+                                btn_connect.setText("CONNECT");
+
+                                update_ip();
+
+                                Handler successHandler = new Handler();
+                                successHandler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        load_counter.setText("");
+                                        lottie_animation.cancelAnimation();
+                                        create_animation(lottie_animation, R.anim.fade_in);
+                                        lottie_animation.setAnimation(R.raw.noconnection);
+                                        lottie_animation.playAnimation();
+                                    }
+                                }, 1000);
+
+                            }
+                        }.start();
+                    }
+                }
+                else{
+                    IsConButtonPushed = false;
+                    App.isStart = false;
+                    stop_vpn();
+
+                    update_ip();
+                    create_animation(load_counter, R.anim.fade_out);
+                    create_animation(lottie_animation, R.anim.fade_out);
+
+                    countDownTimer.cancel();
+                    btn_connect.setText("CONNECT");
+                    protected_state.setText("Unprotected");
+                    protected_state.setTextColor(getResources().getColor(R.color.colorRed));
+
+                    Handler cancelHandler = new Handler();
+                    cancelHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            load_counter.setText("");
+                            lottie_animation.cancelAnimation();
+                            create_animation(lottie_animation, R.anim.fade_in);
+                            lottie_animation.setAnimation(R.raw.noconnection);
+                            lottie_animation.playAnimation();
+                        }
+                    }, 1000);
+
+                }
+
+            }
+        });
+
+        chose_server.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent server_activity = new Intent(MainActivity.this, ServersActivity.class);
+                startActivity(server_activity);
+                overridePendingTransition(R.anim.bottom_in, R.anim.alpha);
+            }
+        });
+
+        // ui update thread
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted()){
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            setFlag(Flag);
+                            tv_server_location.setText(ServerLocationCountry);
+                            if(App.abortConnection){
+                                if(App.isStart){
+                                    App.abortConnection = false;
+                                    stop_vpn();
+                                    update_ip();
+                                    IsConButtonPushed = false;
+                                    btn_connect.setText("CONNECT");
+                                    protected_state.setText("Unprotected");
+                                    protected_state.setTextColor(getResources().getColor(R.color.colorRed));
+                                    lottie_animation.cancelAnimation();
+                                    lottie_animation.setAnimation(R.raw.noconnection);
+                                    lottie_animation.playAnimation();
+
+                                }
+                                else {
+                                    if(isTimerStarted){
+                                        App.abortConnection = false;
+                                        IsConButtonPushed = false;
+                                        load_counter.setText("");
+                                        countDownTimer.cancel();
+                                        btn_connect.setText("CONNECT");
+                                        protected_state.setText("Unprotected");
+                                        protected_state.setTextColor(getResources().getColor(R.color.colorRed));
+                                        lottie_animation.cancelAnimation();
+                                        lottie_animation.setAnimation(R.raw.noconnection);
+                                        lottie_animation.playAnimation();
+                                    }
+                                }
+
+                            }
+
+                        }
+                    });
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        Log.d("Error", e.toString());
+                    }
+                }
+
+            }
+        };
+
+        Thread ui_update = new Thread(r);
+        ui_update.start();
+
+    }
+
+
+
+    private void create_animation(View view, int anim_id){
+        Animation animation =  AnimationUtils.loadAnimation(MainActivity.this, anim_id);
+        view.setAnimation(animation);
+    }
+
+    private void update_ip(){
+        RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
         queue.getCache().clear();
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, "https://api.ipify.org",
@@ -207,149 +444,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         queue.add(stringRequest);
-
-        protected_state.setText("Unprotected");
-        protected_state.setTextColor(getResources().getColor(R.color.colorRed));
-        lottie_animation.setAnimation(R.raw.noconnection);
-        lottie_animation.playAnimation();
-
-        btn_connect.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(!IsConnectionEstablished){
-                    if(hasInternetConnection()){
-                        lottie_animation.cancelAnimation();
-                        lottie_animation.setAnimation(R.raw.loading_circle);
-                        lottie_animation.playAnimation();
-                        btn_connect.setText("CONNECTING");
-                        timer = 30;
-                        start_vpn(VpnFileConnection);
-                        IsConnectionEstablished = true;
-                        CountDownTimer countDownTimer = new CountDownTimer(7000, 1000){
-                            @Override
-                            public void onTick(long millisUntilFinished) {
-                                timer = timer - 1;
-                                load_counter.setText(Integer.toString(timer));
-
-                            }
-
-                            @Override
-                            public void onFinish() {
-                                load_counter.setText("");
-                                btn_connect.setText("DISCONNECT");
-                                protected_state.setText("Protected");
-                                protected_state.setTextColor(getResources().getColor(R.color.colorGreen));
-                                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
-                                queue.getCache().clear();
-
-                                StringRequest stringRequest = new StringRequest(Request.Method.GET, "https://api.ipify.org",
-                                        new Response.Listener<String>() {
-                                            @Override
-                                            public void onResponse(String Response) {
-                                                Log.d("Response", Response);
-                                                current_ip.setText("Your ip: " + Response);
-
-                                            }
-                                        }, new Response.ErrorListener() {
-                                    @Override
-                                    public void onErrorResponse(VolleyError error) {
-                                        Log.d("Error", error.toString());
-                                    }
-                                });
-                                queue.add(stringRequest);
-                                lottie_animation.cancelAnimation();
-                                lottie_animation.setAnimation(R.raw.servers);
-                                lottie_animation.playAnimation();
-
-                            }
-                        }.start();
-                    }
-                }
-                else{
-                    stop_vpn();
-                    IsConnectionEstablished = false;
-                    StringRequest stringRequest = new StringRequest(Request.Method.GET, "https://api.ipify.org",
-                            new Response.Listener<String>() {
-                                @Override
-                                public void onResponse(String Response) {
-                                    Log.d("Response", Response);
-                                    current_ip.setText("Your ip: " + Response);
-
-                                }
-                            }, new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            Log.d("Error", error.toString());
-                        }
-                    });
-                    queue.add(stringRequest);
-                    protected_state.setText("Unprotected");
-                    protected_state.setTextColor(getResources().getColor(R.color.colorRed));
-                    lottie_animation.cancelAnimation();
-                    lottie_animation.setAnimation(R.raw.noconnection);
-                    lottie_animation.playAnimation();
-                    btn_connect.setText("CONNECT");
-                }
-
-            }
-        });
-
-        chose_server.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent server_activity = new Intent(MainActivity.this, ServersActivity.class);
-                startActivity(server_activity);
-            }
-        });
-
-//        start_service.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Intent service = new Intent(getBaseContext(), MyServiceStarting.class);
-//                Log.d("Service", "Thread id: " + Long.toString(Thread.currentThread().getId()) + " MainActivity");
-//                startService(service);
-//
-//            }
-//        });
-//
-//        stop_service.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Intent service = new Intent(getBaseContext(), MyServiceStarting.class);
-//                stopService(service);
-//            }
-//        });
-
-        // ui update thread
-        Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                while (!Thread.currentThread().isInterrupted()){
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            setFlag(Flag);
-                            tv_server_location.setText(ServerLocationCountry);
-                        }
-                    });
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        Log.d("Error", e.toString());
-                    }
-                }
-
-            }
-        };
-
-        Thread ui_update = new Thread(r);
-        ui_update.start();
-
     }
 
     private void stop_vpn(){
-
         App.connection_status = 0;
         OpenVPNService.abortConnectionVPN = true;
 
@@ -368,16 +465,64 @@ public class MainActivity extends AppCompatActivity {
         vpnProfile = profileManager.getProfileByName(Build.MODEL);
         profileManager.removeProfile(this, vpnProfile);
 
-
     }
 
+    // TODO Add all flags
     private void setFlag(String img_flag){
         switch (img_flag){
+            case "japan":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_japan);
+                break;
+            case "russia":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_russia);
+                break;
+            case "southkorea":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_south_korea);
+                break;
+            case "thailand":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_thailand);
+                break;
+            case "vietnam":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_vietnam);
+                break;
             case "unitedstates":
                 chosen_server_img.setImageResource(R.drawable.ic_flag_united_states);
                 break;
-            case  "germany":
+            case "unitedkingdom":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_united_kingdom);
+                break;
+            case "singapore":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_singapore);
+                break;
+            case "france":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_france);
+                break;
+            case "germany":
                 chosen_server_img.setImageResource(R.drawable.ic_flag_germany);
+                break;
+            case "canada":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_canada);
+                break;
+            case "luxemburg":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_luxemburg);
+                break;
+            case "netherlands":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_netherlands);
+                break;
+            case "spain":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_spain);
+                break;
+            case "finland":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_finland);
+                break;
+            case "poland":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_poland);
+                break;
+            case "australia":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_australia);
+                break;
+            case "italy":
+                chosen_server_img.setImageResource(R.drawable.ic_flag_italy);
                 break;
             default:
                 chosen_server_img.setImageResource(R.drawable.ic_flag_unknown_mali);
@@ -402,37 +547,37 @@ public class MainActivity extends AppCompatActivity {
 
         App.connection_status = 1;
         try {
-            inputStream = null;
-            bufferedReader = null;
+            ByteInputStream = null;
+            ByteBufferedReader = null;
             try {
                 assert VPNFile != null;
 
                 // ByteArrayInputStream for reading bytes stream
-                inputStream = new ByteArrayInputStream(VPNFile.getBytes(Charset.forName("UTF-8")));
+                ByteInputStream = new ByteArrayInputStream(VPNFile.getBytes(Charset.forName("UTF-8")));
             } catch (Exception e) {
 
             }
 
             try { // M8
-                assert inputStream != null;
+                assert ByteInputStream != null;
                 // create reader
-                bufferedReader = new BufferedReader(new InputStreamReader(inputStream/*, Charset.forName("UTF-8")*/));
+                ByteBufferedReader = new BufferedReader(new InputStreamReader(ByteInputStream/*, Charset.forName("UTF-8")*/));
             } catch (Exception e) {
 
             }
             // creating openvpn configure
-            cp = new ConfigParser();
+            conf_parcer = new ConfigParser();
             try {
                 // push config file to parser
-                cp.parseConfig(bufferedReader);
+                conf_parcer.parseConfig(ByteBufferedReader);
             } catch (Exception e) {
 
             }
 
             // return and save VPN profile. return VpnProfile object
-            vp = cp.convertProfile();
+            vpn_profile = conf_parcer.convertProfile();
             // Allow apps witch blocked
-            vp.mAllowedAppsVpnAreDisallowed = true;
+            vpn_profile.mAllowedAppsVpnAreDisallowed = true;
 
             EncryptData En = new EncryptData();
             SharedPreferences AppValues = getSharedPreferences("app_values", 0);
@@ -444,7 +589,7 @@ public class MainActivity extends AppCompatActivity {
                 for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject json_object = jsonArray.getJSONObject(i);
                     // add blocked aps to profile set
-                    vp.mAllowedAppsVpn.add(json_object.getString("app"));
+                    vpn_profile.mAllowedAppsVpn.add(json_object.getString("app"));
                     Log.e("packages", json_object.getString("app"));
                 }
             } catch (JSONException e) {
@@ -454,26 +599,26 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 // set build name
-                vp.mName = Build.MODEL;
+                vpn_profile.mName = Build.MODEL;
             } catch (Exception e) {
             }
 
-            vp.mUsername = Data.FileUsername;
-            vp.mPassword = Data.FilePassword;
+            vpn_profile.mUsername = Data.FileUsername;
+            vpn_profile.mPassword = Data.FilePassword;
 
             try {
                 // get Profile manager
-                pm = ProfileManager.getInstance(MainActivity.this);
+                profile_manager = ProfileManager.getInstance(MainActivity.this);
                 // add our profile and save
-                pm.addProfile(vp);
-                pm.saveProfileList(MainActivity.this);
-                pm.saveProfile(MainActivity.this, vp);
+                profile_manager.addProfile(vpn_profile);
+                profile_manager.saveProfileList(MainActivity.this);
+                profile_manager.saveProfile(MainActivity.this, vpn_profile);
 
                 // start LaunchVPN activity
                 // Нада йти в глибину LaunchVPN!
-                vp = pm.getProfileByName(Build.MODEL);
+                vpn_profile = profile_manager.getProfileByName(Build.MODEL);
                 Intent intent = new Intent(getApplicationContext(), LaunchVPN.class);
-                intent.putExtra(LaunchVPN.EXTRA_KEY, vp.getUUID().toString());
+                intent.putExtra(LaunchVPN.EXTRA_KEY, vpn_profile.getUUID().toString());
                 intent.setAction(Intent.ACTION_MAIN);
                 startActivity(intent);
                 App.isStart = false;
@@ -490,13 +635,13 @@ public class MainActivity extends AppCompatActivity {
     private void start_vpn_connection(String VPN_File){
         if (VPN_File != null){
             try {
-                inputStream = new ByteArrayInputStream(VPN_File.getBytes(StandardCharsets.UTF_8));
+                ByteInputStream = new ByteArrayInputStream(VPN_File.getBytes(StandardCharsets.UTF_8));
             } catch (Exception e) {
                 e.printStackTrace();
                 Log.d("Error", e.toString());
             }
             try {
-                bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                ByteBufferedReader = new BufferedReader(new InputStreamReader(ByteInputStream));
             } catch (Exception e) {
                 e.printStackTrace();
                 Log.d("Error", e.toString());
@@ -506,7 +651,7 @@ public class MainActivity extends AppCompatActivity {
             configParser = new ConfigParser();
             try {
                 // push config file to parser
-                configParser.parseConfig(bufferedReader);
+                configParser.parseConfig(ByteBufferedReader);
             }
             catch (Exception e){
                 e.printStackTrace();
@@ -520,15 +665,6 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 Log.d("Error", e.toString());
             }
-            // Allow apps witch blocked
-            vpnProfile.mAllowedAppsVpnAreDisallowed = true;
-
-            // Todo add disallowed apps
-
-            // set name and password
-            vpnProfile.mName = Build.MODEL;
-            vpnProfile.mUsername = Data.FileUsername;
-            vpnProfile.mPassword = Data.FilePassword;
 
             try {
                 // singleton object
@@ -553,184 +689,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void getAppDetails2() {
-        // Create request queue from Volley library
-        RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
-        // clear cache
-        queue.getCache().clear();
-        // Create request object
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, StringGetAppURL,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String Response) {
-                        Log.d("Response", Response);
-                        AppDetails = Response;
-                        Data.isAppDetails = true;
-
-
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                //Bundle params = new Bundle();
-                //params.putString("device_id", App.device_id);
-                ///params.putString("exception", "WA2" + error.toString());
-                Log.d("Error", error.toString());
-                Data.isAppDetails = false;
-            }
-        });
-
-        // Add object to queue
-        queue.add(stringRequest);
-        queue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {
-            @Override
-            public void onRequestFinished(Request<String> request) {
-                if (Data.isAppDetails) {
-                    getFileDetails2();
-                }
-            }
-        });
-    }
-
-    void getFileDetails2() {
-        RequestQueue queue = Volley.newRequestQueue(MainActivity.this);
-        queue.getCache().clear();
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, StringGetConnectionURL,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String Response) {
-                        FileDetails = Response;
-                        Data.isConnectionDetails = true;
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-//                Bundle params = new Bundle();
-//                params.putString("device_id", App.device_id);
-//                params.putString("exception", "WA3" + error.toString());
-                Data.isConnectionDetails = false;
-            }
-        });
-        // Add to queue requests
-        queue.add(stringRequest);
-
-        queue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {
-            @Override
-            public void onRequestFinished(Request<String> request) {
-
-                String Ads = "NULL", cuVersion = "NULL", upVersion = "NULL", upTitle = "NULL", upDescription = "NULL", upSize = "NULL";
-                String ID = "NULL", FileID = "NULL", File = "NULL", City = "NULL", Country = "NULL", Image = "NULL",
-                        IP = "NULL", Active = "NULL", Signal = "NULL";
-                String BlockedApps = "NULL";
-
-                // Get ads
-                try {
-                    JSONObject jsonResponse = new JSONObject(AppDetails);
-                    Ads = jsonResponse.getString("ads");
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-
-                // App details from json array
-                try {
-                    JSONObject jsonResponse = new JSONObject(AppDetails);
-                    JSONArray jsonArray = jsonResponse.getJSONArray("update");
-                    JSONObject jsonObject = jsonArray.getJSONObject(0);
-                    upVersion = jsonObject.getString("version");
-                    upTitle = jsonObject.getString("title");
-                    upDescription = jsonObject.getString("description");
-                    upSize = jsonObject.getString("size");
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-
-                // Get servers data from json array
-                try {
-                    JSONObject json_response = new JSONObject(AppDetails);
-                    JSONArray jsonArray = json_response.getJSONArray("free");
-                    JSONObject json_object = jsonArray.getJSONObject(0);
-                    ID = json_object.getString("id");
-                    FileID = json_object.getString("file");
-                    City = json_object.getString("city");
-                    Country = json_object.getString("country");
-                    Image = json_object.getString("image");
-                    IP = json_object.getString("ip");
-                    Active = json_object.getString("active");
-                    Signal = json_object.getString("signal");
-
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-
-                // Get ovpn file
-                try {
-                    JSONObject json_response = new JSONObject(FileDetails);
-                    JSONArray jsonArray = json_response.getJSONArray("ovpn_file");
-                    JSONObject json_object = jsonArray.getJSONObject(Integer.valueOf(FileID));
-                    FileID = json_object.getString("id");
-                    File = json_object.getString("file");
-                    Log.d("FileID", File);
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-
-
-                // save details
-                EncryptData En = new EncryptData();
-                try {
-                    // save current version
-                    PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-                    cuVersion = pInfo.versionName;
-                    if (cuVersion.isEmpty()) {
-                        cuVersion = "0.0.0";
-                    }
-
-                    // saving app details to SharedPreferences file
-                    SharedAppDetails = getSharedPreferences("app_details", 0);
-                    SharedPreferences.Editor Editor = SharedAppDetails.edit();
-                    Editor.putString("ads", Ads);
-                    Editor.putString("up_title", upTitle);
-                    Editor.putString("up_description", upDescription);
-                    Editor.putString("up_size", upSize);
-                    Editor.putString("up_version", upVersion);
-                    Editor.putString("cu_version", cuVersion);
-                    Editor.apply();
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-
-                // saving app connection data to SharedPreferences file
-                try {
-                    SharedAppDetails = getSharedPreferences("connection_data", 0);
-                    SharedPreferences.Editor Editor = SharedAppDetails.edit();
-                    Editor.putString("id", ID);
-                    Editor.putString("file_id", FileID);
-                    Editor.putString("file", En.encrypt(File));
-                    Editor.putString("city", City);
-                    Editor.putString("country", Country);
-                    Editor.putString("image", Image);
-                    Editor.putString("ip", IP);
-                    Editor.putString("active", Active);
-                    Editor.putString("signal", Signal);
-                    Editor.apply();
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-
-                // Save all string file
-                try {
-                    SharedAppDetails = getSharedPreferences("app_values", 0);
-                    SharedPreferences.Editor Editor = SharedAppDetails.edit();
-                    Editor.putString("app_details", En.encrypt(AppDetails));
-                    Editor.putString("file_details", En.encrypt(FileDetails));
-                    Editor.apply();
-                } catch (Exception e) {
-                    Log.d("Error", e.toString());
-                }
-            }
-        });
-    }
-
     private boolean hasInternetConnection() {
         boolean haveConnectedWifi = false;
         boolean haveConnectedMobile = false;
@@ -750,6 +708,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return haveConnectedWifi || haveConnectedMobile;
+    }
+
+    @Override
+    public void updateState(String state, String logmessage, int localizedResId, ConnectionStatus level) {
+        if(state.equals("CONNECTED")){
+            App.isStart = true;
+            App.connection_status = 2;
+//            runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//                }
+//            });
+        }
+    }
+
+    @Override
+    public void setConnectedVPN(String uuid) {
+        Log.d(LogInf, uuid);
     }
 }
 

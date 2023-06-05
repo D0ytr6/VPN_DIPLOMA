@@ -9,6 +9,9 @@ import android.os.Handler;
 
 public class WelcomeSplashScreen extends AppCompatActivity {
 
+    //TODO add slide anim
+    // TODO change logo
+
     private String StringGetAppURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/appdetails.json";
     private String StringGetConnectionURL = "https://raw.githubusercontent.com/D0ytr6/ToyVPN_Testing/master/filedetails.json";
 

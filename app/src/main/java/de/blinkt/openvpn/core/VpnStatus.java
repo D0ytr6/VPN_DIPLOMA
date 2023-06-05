@@ -384,7 +384,6 @@ public class VpnStatus {
 
     public interface StateListener {
         void updateState(String state, String logmessage, int localizedResId, ConnectionStatus level);
-
         void setConnectedVPN(String uuid);
     }
 
