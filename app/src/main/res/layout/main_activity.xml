@@ -88,7 +88,7 @@
                 android:id="@+id/donwload"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                android:layout_width="120dp"
+                android:layout_width="105dp"
                 android:layout_height="wrap_content"
                 android:background="@drawable/rectangle"
                 android:orientation="horizontal">
@@ -108,11 +108,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/white"
-                        android:textSize="12sp"
+                        android:textSize="11sp"
                         android:layout_marginTop="10dp"
-                        android:text="Download:" />
+                        android:text="Download" />
 
                     <TextView
+                        android:id="@+id/text_download"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="10dp"
@@ -125,7 +126,7 @@
 
             <LinearLayout
                 android:id="@+id/upload"
-                android:layout_width="120dp"
+                android:layout_width="105dp"
                 android:layout_height="wrap_content"
                 app:layout_constraintRight_toRightOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
@@ -148,11 +149,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
-                        android:textSize="12sp"
-                        android:text="Upload:"
+                        android:textSize="11sp"
+                        android:text="Upload"
                         android:textColor="@color/white" />
 
                     <TextView
+                        android:id="@+id/text_upload"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="10dp"

@@ -62,10 +62,11 @@ import de.blinkt.openvpn.core.ProfileManager;
 import de.blinkt.openvpn.core.VpnStatus;
 
 
-public class MainActivity extends AppCompatActivity implements VpnStatus.StateListener {
+public class MainActivity extends AppCompatActivity implements VpnStatus.StateListener, VpnStatus.ByteCountListener {
 
     private String LogInf = "LOGGING_INFO";
     private String Mylogging = "Mylogging";
+    private int TotalDownload = 0, TotalSend = 0;
 
     private InputStream ByteInputStream;
     private BufferedReader ByteBufferedReader;
@@ -89,7 +90,7 @@ public class MainActivity extends AppCompatActivity implements VpnStatus.StateLi
     public DrawerLayout drawerLayout;
     public ActionBarDrawerToggle actionBarDrawerToggle;
 
-    private TextView tv_server_location, current_ip, protected_state;
+    private TextView tv_server_location, current_ip, protected_state, tv_downloaded, tv_uploaded;
     private EncryptData encryptData = new EncryptData();
     private boolean IsConButtonPushed = false, isTimerStarted = false;
 
@@ -100,7 +101,7 @@ public class MainActivity extends AppCompatActivity implements VpnStatus.StateLi
     String TODAY;
 
     //TODO Add click event to drawer elements
-    //TODO fix bug whith connect button, if clear app when connection established and open again
+    //TODO fix bug with connect button, if clear app when connection established and open again
     //TODO reduce bold of timer +
     //TODO save chosen server in SharedPreferences
     //TODO fix slow load of ip
@@ -138,6 +139,7 @@ public class MainActivity extends AppCompatActivity implements VpnStatus.StateLi
         }
 
         VpnStatus.addStateListener(this);
+        VpnStatus.addByteCountListener(this);
 
         Intent intent = new Intent(this, OpenVPNService.class);
         intent.setAction(OpenVPNService.START_SERVICE);
@@ -199,6 +201,8 @@ public class MainActivity extends AppCompatActivity implements VpnStatus.StateLi
         current_ip = findViewById(R.id.current_ip);
         protected_state = findViewById(R.id.protected_state);
         connection_data = findViewById(R.id.connection_data);
+        tv_downloaded = findViewById(R.id.text_download);
+        tv_uploaded = findViewById(R.id.text_upload);
 
         Typeface pixel_typeface = Typeface.createFromAsset(getAssets(),"fonts/pixel_font2.ttf");
         Typeface roboto_typeface = Typeface.createFromAsset(getAssets(),"fonts/Roboto-Bold.ttf");
@@ -724,9 +728,38 @@ public class MainActivity extends AppCompatActivity implements VpnStatus.StateLi
         }
     }
 
+    private void setByteToView(long bytes, TextView view){
+
+        if(ByteConverter.toKiloBytes(bytes) >= 1 && ByteConverter.toKiloBytes(bytes) <= 999){
+            view.setText(ByteConverter.toKiloBytes(bytes) + " KB");
+        }
+
+        else if(ByteConverter.toMegaBytes(bytes) >= 1 && ByteConverter.toMegaBytes(bytes) <= 999){
+            view.setText(ByteConverter.toMegaBytes(bytes) + " MB");
+        }
+
+        else if(ByteConverter.toGigaBytes(bytes) >= 1 && ByteConverter.toGigaBytes(bytes) <= 999){
+            view.setText(ByteConverter.toGigaBytes(bytes) + " GB");
+        }
+    }
+
     @Override
     public void setConnectedVPN(String uuid) {
         Log.d(LogInf, uuid);
+    }
+
+    @Override
+    public void updateByteCount(long in, long out, long diffIn, long diffOut) {
+
+        TotalSend = TotalSend + (int) out;
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setByteToView(in, tv_downloaded);
+                setByteToView(out, tv_uploaded);
+            }
+        });
     }
 }
 
